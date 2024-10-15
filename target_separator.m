@@ -1,4 +1,4 @@
-function process_all_files(directory)
+function target_separator(directory)
     % Get a list of all .mat files in the directory
     matFiles = dir(fullfile(directory, '*.mat'));
     
@@ -32,6 +32,7 @@ function process_mat_file(mat_file)
     
     % Step 4: Save the results to text files
     save_differences(mat_file, cfb, tfb);
+    process_feedback_error_target(feedback,error,target,mat_file);
 end
 
 function new_arr = insert_nans(arr, start_idx, end_idx)
@@ -86,10 +87,10 @@ function save_differences(mat_file, cfb, tfb)
     fclose(fid);
 end
 
-function [target_error, target_feedback] = process_feedback_error_target(feedback, error, target)
+function [target_error, target_feedback] = process_feedback_error_target(feedback, error, target, mat_file)
     % Create error and feedback masks
-    error_mask = [error, ones(length(error), 1)];
-    feedback_mask = [feedback, zeros(length(feedback), 1)];
+    error_mask = [error(:), ones(length(error), 1)];
+    feedback_mask = [feedback(:), zeros(length(feedback), 1)];
     
     % Concatenate and sort by the first column
     tot_feedback = [error_mask; feedback_mask];
@@ -116,7 +117,15 @@ function [target_error, target_feedback] = process_feedback_error_target(feedbac
     % Remove NaNs from the results
     target_error = target_error(~isnan(target_error));
     target_feedback = target_feedback(~isnan(target_feedback));
+    
+    % Generate the output file name dynamically based on the input file name
+    [path, base_name, ~] = fileparts(mat_file);  % Extract the file path and base name
+    
+    % Save the 'targets_sep' structure to a .mat file
+    targets_sep = struct('target_error', target_error, 'target_feedback', target_feedback);
+    save(fullfile(path, [base_name, '_targets_sep.mat']), 'targets_sep');
 end
+
 
 function result = calculate_target_array(target, mask_arr)
     % Calculate the target array (target_error or target_feedback) based on the mask array
